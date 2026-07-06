@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MyServiceArea | Find Support From Anywhere</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="Style.css" />
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            MyServiceArea <span>NEW</span>
+        </div>
+
+        <p class="intro-text">
+            Find trusted public support nearby, including work-from-home friendly spaces with fast internet and calm study areas.
+        </p>
+
+        <ul class="nav-menu">
+            <li class="nav-item">Dashboard</li>
+            <li class="nav-item active">Map View <span class="nav-counter" id="activeCounter">0</span></li>
+            <li class="nav-item" onclick="alert('Firebase Auth placeholder container hook for Phase 2!')">Sign In / Register</li>
+        </ul>
+
+        <div class="sidebar-card">
+            <h3>Work from home</h3>
+            <p>Browse services that support remote work, interviews, study, and digital access from home.</p>
+            <div class="chip-row">
+                <span class="chip chip-blue">Wi-Fi</span>
+                <span class="chip chip-green">Quiet spaces</span>
+            </div>
+        </div>
+
+        <div class="filter-box">
+            <label for="serviceType">Filter Category</label>
+            <select id="serviceType" onchange="filterMapLayers()">
+                <option value="all">📍 Show All Services</option>
+                <option value="clinic">🏥 Health Clinics</option>
+                <option value="library">📚 Public Libraries</option>
+                <option value="shelter">🏠 Crisis Shelters</option>
+                <option value="remote">💻 Work From Home</option>
+            </select>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="top-controls-container">
+            <div class="top-search-overlay">
+                <input type="text" id="mapSearch" oninput="filterMapLayers()" placeholder="Search by service title or keyword..." />
+            </div>
+            <button class="action-btn" onclick="toggleSuggestionForm(true)">+ Suggest Location</button>
+        </div>
+
+        <div class="floating-summary">
+            <p>Showing <strong id="summaryCount">0</strong> services</p>
+            <span class="summary-chip">Home-ready support</span>
+        </div>
+
+        <div id="map"></div>
+    </main>
+
+    <div class="modal-screen" id="suggestionModal">
+        <div class="modal-card">
+            <h3>Suggest New Service</h3>
+            <p>Fill out the fields below. Tip: You can also tap anywhere directly on the map surface behind to grab precise coordinates instantly.</p>
+
+            <form id="submissionForm" onsubmit="saveUserSuggestion(event)">
+                <div class="input-group">
+                    <label>Facility Type</label>
+                    <select id="fieldServiceType" required>
+                        <option value="clinic">🏥 Health Clinic</option>
+                        <option value="library">📚 Public Library</option>
+                        <option value="shelter">🏠 Crisis Shelter</option>
+                        <option value="remote">💻 Work From Home Hub</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Facility Name</label>
+                    <input type="text" id="fieldName" placeholder="e.g. Hope Valley Clinic" required />
+                </div>
+                <div class="input-group">
+                    <label>Description & Services Offered</label>
+                    <textarea id="fieldDesc" rows="2" placeholder="Details about treatments, beds, or resources..." required></textarea>
+                </div>
+                <div class="split-row">
+                    <div class="input-group" style="flex: 1;">
+                        <label>Latitude</label>
+                        <input type="number" step="any" id="fieldLat" value="-33.9249" required />
+                    </div>
+                    <div class="input-group" style="flex: 1;">
+                        <label>Longitude</label>
+                        <input type="number" step="any" id="fieldLon" value="18.4241" required />
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Operating Hours</label>
+                    <input type="text" id="fieldHours" placeholder="e.g. 08:00 - 17:00 or 24/7" required />
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" onclick="toggleSuggestionForm(false)">Cancel</button>
+                    <button type="submit" class="btn-submit">Submit Suggestion</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="Script.js"></script>
+</body>
+</html>
