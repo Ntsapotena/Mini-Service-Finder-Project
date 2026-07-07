@@ -1,37 +1,251 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MyServiceArea | Find Support From Anywhere</title>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyCommunityArea - Public Service Finder</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="Style.css" />
+
+    <style>
+        /* Base Reset & Core Layout Styles */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            background-color: #f8fafc;
+        }
+
+        /* Fixed Left Sidebar (Matches Reference UI Layout) */
+        .sidebar {
+            width: 260px;
+            background-color: #0b1a42; /* Deep Navy Blue */
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 0;
+            flex-shrink: 0;
+            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+        }
+
+        .sidebar-brand {
+            font-size: 18px;
+            font-weight: bold;
+            padding: 0 20px 25px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: #38bdf8;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sidebar-brand span {
+            font-size: 12px;
+            background: #0284c7;
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: normal;
+        }
+
+        .nav-menu {
+            list-style: none;
+            margin-top: 20px;
+        }
+
+        .nav-item {
+            padding: 12px 20px;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 15px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-item:hover {
+            color: #ffffff;
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-item.active {
+            color: #ffffff;
+            background-color: #1e3a8a; /* Accent Blue Selection */
+            border-left: 4px solid #38bdf8;
+            font-weight: 600;
+        }
+
+        /* Built-in Feature Counters */
+        .nav-counter {
+            font-size: 11px;
+            background: rgba(255,255,255,0.15);
+            padding: 2px 8px;
+            border-radius: 10px;
+            color: #fff;
+        }
+
+        /* Filter Block inside Sidebar */
+        .filter-box {
+            margin: auto 15px 15px 15px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .filter-box label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #94a3b8;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .filter-box select {
+            width: 100%;
+            padding: 10px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: #fff;
+            border-radius: 6px;
+            outline: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        /* Right Side Content Pane */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            height: 100%;
+        }
+
+        /* Dynamic Map Container */
+        #map {
+            width: 100%;
+            flex: 1;
+            z-index: 1;
+        }
+
+        /* Top Search Bar Interface Overlay */
+        .top-search-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 999;
+            background: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            gap: 10px;
+            width: 320px;
+        }
+
+        .top-search-overlay input {
+            width: 100%;
+            border: none;
+            outline: none;
+            font-size: 14px;
+            color: #1e293b;
+        }
+
+        /* Leaflet Custom Marker Popup Layout Styling */
+        .map-popup {
+            padding: 5px;
+            min-width: 200px;
+        }
+        .map-popup h3 {
+            margin-bottom: 4px;
+            font-size: 15px;
+            color: #0f172a;
+        }
+        .map-popup p {
+            font-size: 13px;
+            color: #475569;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+        .popup-badge {
+            display: inline-block;
+            font-size: 10px;
+            text-transform: uppercase;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+        .badge-clinic { background: #fee2e2; color: #991b1b; }
+        .badge-library { background: #fef3c7; color: #92400e; }
+        .badge-shelter { background: #dcfce7; color: #166534; }
+
+        .directions-btn {
+            display: block;
+            text-align: center;
+            background: #2563eb;
+            color: white !important;
+            text-decoration: none;
+            padding: 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* Custom Dynamic Marker Styling Classes */
+        .custom-pin {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: white;
+            border: 2px solid white;
+            border-radius: 50%;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            width: 24px !important;
+            height: 24px !important;
+        }
+        .pin-clinic { background-color: #ef4444; }
+        .pin-library { background-color: #f59e0b; }
+        .pin-shelter { background-color: #10b981; }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; height: auto; padding: 10px 0; }
+            .sidebar-brand { padding-bottom: 10px; border-bottom: none; }
+            .nav-menu { display: flex; overflow-x: auto; margin-top: 5px; }
+            .nav-item { padding: 8px 15px; white-space: nowrap; }
+            .filter-box { margin: 10px; }
+            .top-search-overlay { width: calc(100% - 40px); top: 10px; left: 20px; }
+        }
+    </style>
 </head>
 <body>
+
     <aside class="sidebar">
         <div class="sidebar-brand">
-            MyServiceArea <span>NEW</span>
+            MyServiceArea <span>BETA</span>
         </div>
-
-        <p class="intro-text">
-            Find trusted public support nearby, including work-from-home friendly spaces with fast internet and calm study areas.
-        </p>
-
+        
         <ul class="nav-menu">
-            <li class="nav-item">Dashboard</li>
-            <li class="nav-item active">Map View <span class="nav-counter" id="activeCounter">0</span></li>
-            <li class="nav-item" onclick="alert('Firebase Auth placeholder container hook for Phase 2!')">Sign In / Register</li>
+            <li class="nav-item">Dashboard <span class="nav-counter">v1</span></li>
+            <li class="nav-item active">Map View <span class="nav-counter" id="totalCounter">0</span></li>
+            <li class="nav-item">Contacts</li>
+            <li class="nav-item">Content Manager</li>
+            <li class="nav-item">Site Integration</li>
         </ul>
-
-        <div class="sidebar-card">
-            <h3>Work from home</h3>
-            <p>Browse services that support remote work, interviews, study, and digital access from home.</p>
-            <div class="chip-row">
-                <span class="chip chip-blue">Wi-Fi</span>
-                <span class="chip chip-green">Quiet spaces</span>
-            </div>
-        </div>
 
         <div class="filter-box">
             <label for="serviceType">Filter Category</label>
@@ -40,73 +254,97 @@
                 <option value="clinic">🏥 Health Clinics</option>
                 <option value="library">📚 Public Libraries</option>
                 <option value="shelter">🏠 Crisis Shelters</option>
-                <option value="remote">💻 Work From Home</option>
             </select>
         </div>
     </aside>
 
     <main class="main-content">
-        <div class="top-controls-container">
-            <div class="top-search-overlay">
-                <input type="text" id="mapSearch" oninput="filterMapLayers()" placeholder="Search by service title or keyword..." />
-            </div>
-            <button class="action-btn" onclick="toggleSuggestionForm(true)">+ Suggest Location</button>
-        </div>
-
-        <div class="floating-summary">
-            <p>Showing <strong id="summaryCount">0</strong> services</p>
-            <span class="summary-chip">Home-ready support</span>
+        
+        <div class="top-search-overlay">
+            <input type="text" id="mapSearch" oninput="filterMapLayers()" placeholder="Search by service title or keyword...">
         </div>
 
         <div id="map"></div>
     </main>
 
-    <div class="modal-screen" id="suggestionModal">
-        <div class="modal-card">
-            <h3>Suggest New Service</h3>
-            <p>Fill out the fields below. Tip: You can also tap anywhere directly on the map surface behind to grab precise coordinates instantly.</p>
-
-            <form id="submissionForm" onsubmit="saveUserSuggestion(event)">
-                <div class="input-group">
-                    <label>Facility Type</label>
-                    <select id="fieldServiceType" required>
-                        <option value="clinic">🏥 Health Clinic</option>
-                        <option value="library">📚 Public Library</option>
-                        <option value="shelter">🏠 Crisis Shelter</option>
-                        <option value="remote">💻 Work From Home Hub</option>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label>Facility Name</label>
-                    <input type="text" id="fieldName" placeholder="e.g. Hope Valley Clinic" required />
-                </div>
-                <div class="input-group">
-                    <label>Description & Services Offered</label>
-                    <textarea id="fieldDesc" rows="2" placeholder="Details about treatments, beds, or resources..." required></textarea>
-                </div>
-                <div class="split-row">
-                    <div class="input-group" style="flex: 1;">
-                        <label>Latitude</label>
-                        <input type="number" step="any" id="fieldLat" value="-33.9249" required />
-                    </div>
-                    <div class="input-group" style="flex: 1;">
-                        <label>Longitude</label>
-                        <input type="number" step="any" id="fieldLon" value="18.4241" required />
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label>Operating Hours</label>
-                    <input type="text" id="fieldHours" placeholder="e.g. 08:00 - 17:00 or 24/7" required />
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn-cancel" onclick="toggleSuggestionForm(false)">Cancel</button>
-                    <button type="submit" class="btn-submit">Submit Suggestion</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="Script.js"></script>
+
+    <script>
+        // Mock Public Facility Database Coordinates 
+        const communityServices = [
+            { id: 1, name: "City Central Clinic", type: "clinic", lat: -33.9249, lon: 18.4241, desc: "Free basic medical screening, children immunizations, and general healthcare checkups.", hours: "08:00 - 16:00" },
+            { id: 2, name: "St. Jude Medical Wing", type: "clinic", lat: -33.9012, lon: 18.4110, desc: "Chronic disease management clinic and prescription drug pickup location.", hours: "07:30 - 15:30" },
+            { id: 3, name: "Metropolitan Public Library", type: "library", lat: -33.9215, lon: 18.4210, desc: "Free computer terminal bookings, study tables, children's books, and open high-speed WiFi.", hours: "09:00 - 17:00" },
+            { id: 4, name: "Hilltop Regional Library", type: "library", lat: -33.9550, lon: 18.4680, desc: "Community study spaces, printing & copying solutions, and educational seminars.", hours: "09:00 - 18:00" },
+            { id: 5, name: "Hope Harbor Emergency Shelter", type: "shelter", lat: -33.9321, lon: 18.4025, desc: "Overnight short-term emergency beds, hot meal services, and professional housing counseling support.", hours: "24/7 Intake" },
+            { id: 6, name: "Beacon Valley Safe Haven", type: "shelter", lat: -34.0250, lon: 18.6110, desc: "Crisis support housing system offering transitional living workshops for displaced individuals.", hours: "16:00 Open" }
+        ];
+
+        // 1. Instantiate the Leaflet Map Engine
+        const map = L.map('map', { zoomControl: false }).setView([-33.9249, 18.4250], 12);
+
+        // Move zoom controls down to the bottom right out of the sidebar/search overlay path
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        // 2. Load Free OpenStreetMap Vector Map Rendering Tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Tracker Array to manage markers currently painted onto active map layers
+        let renderedMarkers = [];
+
+        // 3. Process, Filter, and Paint Node Markers onto the active Map canvas Layout
+        function filterMapLayers() {
+            const selectedCategory = document.getElementById('serviceType').value;
+            const searchKeyword = document.getElementById('mapSearch').value.toLowerCase();
+
+            // Strip out older rendered markers to avoid duplicates on state shift
+            renderedMarkers.forEach(m => map.removeLayer(m));
+            renderedMarkers = [];
+
+            let currentVisibleCount = 0;
+
+            // Loop and evaluate data coordinates entries
+            communityServices.forEach(service => {
+                const matchesCategory = selectedCategory === 'all' || service.type === selectedCategory;
+                const matchesSearch = service.name.toLowerCase().includes(searchKeyword) || 
+                                      service.desc.toLowerCase().includes(searchKeyword);
+
+                if (matchesCategory && matchesSearch) {
+                    currentVisibleCount++;
+                    
+                    // Create custom styled dot marker based on service type classification
+                    const customIcon = L.divIcon({
+                        className: `custom-pin pin-${service.type}`,
+                        html: `<div style="width:10px; height:10px; background:white; border-radius:50%;"></div>`
+                    });
+
+                    // Create Node Marker Reference with custom color icon definitions
+                    const marker = L.marker([service.lat, service.lon], { icon: customIcon }).addTo(map);
+
+                    // Build Clean Popup Markup Context Window
+                    const popupHTML = `
+                        <div class="map-popup">
+                            <span class="popup-badge badge-${service.type}">${service.type}</span>
+                            <h3>${service.name}</h3>
+                            <p>${service.desc}</p>
+                            <p style="font-size:11px; margin-top:4px;">🕒 <b>Hours:</b> ${service.hours}</p>
+                            <a class="directions-btn" href="https://www.google.com/maps/dir/?api=1&destination=${service.lat},${service.lon}" target="_blank">Get Directions</a>
+                        </div>
+                    `;
+
+                    marker.bindPopup(popupHTML);
+                    renderedMarkers.push(marker);
+                }
+            });
+
+            // Update the live sidebar statistic metric counter element dynamically
+            document.getElementById('totalCounter').textContent = currentVisibleCount;
+        }
+
+        // Run structural setup on initial window runtime execution sequence
+        filterMapLayers();
+    </script>
 </body>
 </html>
