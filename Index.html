@@ -21,7 +21,17 @@
             <li class="nav-item" onclick="alert('Admin Login / Dashboard integration coming in Phase 2!')">🔑 Admin Portal</li>
         </ul>
 
-        <!-- Whiteboard Feature #5: Filter Services -->
+        <div class="stats-card">
+            <div>
+                <span id="visibleCount">0</span>
+                <p>Visible</p>
+            </div>
+            <div>
+                <span id="favoriteCount">0</span>
+                <p>Favorites</p>
+            </div>
+        </div>
+
         <div class="filter-box">
             <label for="serviceFilter">Filter Services</label>
             <select id="serviceFilter">
@@ -30,6 +40,8 @@
                 <option value="library">📚 Libraries</option>
                 <option value="shelter">🏠 Shelters</option>
                 <option value="police">🚓 Police Stations</option>
+                <option value="remote">💻 Work From Home</option>
+                <option value="favorites">⭐ Favorites</option>
             </select>
         </div>
     </aside>
@@ -41,8 +53,56 @@
             <div class="search-box-wrapper">
                 <input type="text" id="mapSearch" placeholder="Search by service name or keyword...">
             </div>
-            <!-- Whiteboard Feature #10: Suggest New Service -->
+            <div id="routeInfo" style="display:none; align-items:center; gap:8px; background:rgba(255,255,255,0.95); padding:8px 10px; border-radius:8px;">
+                <span id="routeSummary" style="font-weight:700; color:#0f172a"></span>
+                <button class="control-btn" id="clearRouteBtn" onclick="clearRoute()">Clear Route</button>
+            </div>
+            <button class="control-btn" id="toggleThemeBtn">🌙 Dark Mode</button>
             <button class="suggest-action-btn" id="openModalBtn">+ Suggest Location</button>
+        </div>
+
+        <div class="map-action-row">
+            <button class="secondary-btn" onclick="locateUser()">📍 Find Me</button>
+            <button class="secondary-btn" onclick="pickRandomService()">🎲 Surprise Me</button>
+            <button class="secondary-btn" onclick="toggleClusters()">🧩 Toggle Clusters</button>
+            <button class="secondary-btn" onclick="toggleHeat()">🔥 Toggle Heatmap</button>
+            <button class="secondary-btn" onclick="startVoiceSearch()">🎤 Voice Search</button>
+            <button class="secondary-btn" onclick="toggleMiniMode()">🧾 Mini Mode</button>
+            <div class="tile-switcher">
+                <button class="tile-btn active" data-source="osm">OSM</button>
+                <button class="tile-btn" data-source="toner">Toner</button>
+            </div>
+            <button class="secondary-btn" onclick="exportData()">⬇️ Export JSON</button>
+            <button class="secondary-btn" onclick="document.getElementById('importFile').click()">⬆️ Import JSON</button>
+        </div>
+
+        <div class="service-list-panel" id="serviceListPanel">
+            <div class="service-list-header">
+                <div>
+                    <h4>Nearby services</h4>
+                    <p id="serviceListDescription">Tap a card to jump there.</p>
+                </div>
+                <button class="collapse-btn" id="toggleListBtn">Hide</button>
+            </div>
+            <div class="service-list-items" id="serviceListItems"></div>
+        </div>
+        <div class="legend-card" id="legendCard">
+            <h4>Service Types</h4>
+            <div class="legend-items">
+                <span class="legend-chip clinic">Clinic</span>
+                <span class="legend-chip library">Library</span>
+                <span class="legend-chip shelter">Shelter</span>
+                <span class="legend-chip police">Police</span>
+                <span class="legend-chip remote">Remote</span>
+            </div>
+        </div>
+        <div class="heat-legend-card" id="heatLegendCard" style="display:none;">
+            <h4>Heat Intensity</h4>
+            <div class="heat-gradient">
+                <span class="heat-label low">Low</span>
+                <span class="heat-label high">High</span>
+            </div>
+            <p style="font-size:10px; color:#64748b; margin-top:6px;">Enabled when toggle is on</p>
         </div>
 
         <!-- Whiteboard Feature #1: Interactive Map Canvas Container -->
@@ -61,6 +121,7 @@
                         <option value="library">Library</option>
                         <option value="shelter">Shelter</option>
                         <option value="police">Police Station</option>
+                        <option value="remote">Work From Home Hub</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -95,6 +156,13 @@
 
     <!-- Leaflet Engine Source Code Script -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Marker cluster -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <!-- Heatmap layer -->
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
     <script src="Script.js"></script>
+    <input type="file" id="importFile" accept="application/json" style="display:none" />
 </body>
 </html>
