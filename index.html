@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nearby Services Finder</title>
+
+  <!-- Leaflet CSS (CRITICAL) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- IMPORTANT: match filesystem EXACTLY -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1 class="app-title">
+          NearbyServices
+          <span class="mvp-badge">MVP</span>
+        </h1>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-btn active" data-view="map-view">
+          <span class="nav-icon">🗺️</span>
+          Map View
+        </button>
+        <button class="nav-btn" data-view="admin-portal">
+          <span class="nav-icon">⚙️</span>
+          Admin Portal
+        </button>
+      </nav>
+
+      <div class="metrics-container">
+        <div class="metric-card">
+          <div class="metric-label">Visible</div>
+          <div class="metric-value" id="visible-count">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Favorites</div>
+          <div class="metric-value" id="favorites-count">0</div>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <label class="filter-label">FILTER SERVICES</label>
+        <select class="filter-dropdown" id="category-filter">
+          <option value="all">Show All Services</option>
+          <option value="clinic">Clinic</option>
+          <option value="library">Library</option>
+          <option value="shelter">Shelter</option>
+          <option value="police">Police</option>
+          <option value="remote">Remote</option>
+        </select>
+      </div>
+
+      <div class="category-legend">
+        <div class="legend-title">Categories</div>
+        <div class="legend-items">
+          <div class="legend-item">
+            <span class="legend-dot clinic"></span>
+            <span class="legend-label">Clinic</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot library"></span>
+            <span class="legend-label">Library</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot shelter"></span>
+            <span class="legend-label">Shelter</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot police"></span>
+            <span class="legend-label">Police</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot remote"></span>
+            <span class="legend-label">Remote</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="map-workspace">
+      <!-- CRITICAL MAP FIX: map container must exist and be dimensioned by CSS -->
+      <div id="map-frame"></div>
+
+      <!-- Floating action buttons overlay -->
+      <div class="btn-action">
+        <button class="action-btn" id="find-me-btn" title="Find My Location">
+          <span>📍</span>
+          Find Me
+        </button>
+        <button class="action-btn" id="clear-route-btn" title="Clear Route">
+          <span>🧹</span>
+          Clear Route
+        </button>
+        <button class="action-btn" id="surprise-me-btn" title="Random Service">
+          <span>🎲</span>
+          Surprise Me
+        </button>
+        <button class="action-btn" id="toggle-clusters-btn" title="Toggle Clusters">
+          <span>📊</span>
+          Toggle Clusters
+        </button>
+        <button class="action-btn" id="dark-mode-btn" title="Toggle Dark Mode">
+          <span>🌙</span>
+          Dark Mode
+        </button>
+        <button class="action-btn" id="nearest-clinic-btn" title="Search Nearest Clinic Directions">
+          <span>🏥</span>
+          Nearest Clinic Directions
+        </button>
+      </div>
+
+      <!-- Category pills footer container (bottom-right) -->
+      <div class="category-pills" id="category-pills">
+        <div class="pill clinic">Clinic</div>
+        <div class="pill library">Library</div>
+        <div class="pill shelter">Shelter</div>
+        <div class="pill police">Police</div>
+        <div class="pill remote">Remote</div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
+

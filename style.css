@@ -1,0 +1,450 @@
+/* ===========================
+   RESET (CRITICAL)
+   =========================== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Montserrat', sans-serif;
+}
+
+:root {
+  --color-deep-dark: #080c14;
+  --color-sidebar-bg: #0e1424;
+  --color-surface: #172036;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #a0aec0;
+  --color-accent-blue: #2563eb;
+  --color-clinic: #ef4444;
+  --color-library: #f97316;
+  --color-shelter: #22c55e;
+  --color-police: #3b82f6;
+  --color-remote: #1e3a8a;
+  --z-floating: 1000;
+  --z-popup: 500;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--color-deep-dark);
+  color: var(--color-text-primary);
+}
+
+body {
+  display: flex;
+}
+
+/* ===========================
+   MAIN SHELL
+   =========================== */
+.app-shell {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #080c14;
+}
+
+/* ===========================
+   SIDEBAR
+   =========================== */
+.sidebar {
+  width: 310px;
+  background-color: var(--color-sidebar-bg);
+  border-right: 1px solid #1e2942;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  color: #fff;
+  z-index: 10;
+}
+
+.sidebar-header {
+  border-bottom: 1px solid rgba(37, 99, 235, 0.15);
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+}
+
+.app-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mvp-badge {
+  background: var(--color-accent-blue);
+  color: var(--color-text-primary);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(23, 32, 54, 0.55);
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 10px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-btn:hover {
+  background: rgba(37, 99, 235, 0.12);
+  border-color: rgba(37, 99, 235, 0.45);
+  color: var(--color-text-primary);
+  transform: translateY(-1px);
+}
+
+.nav-btn.active {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(37, 99, 235, 0.55);
+  color: var(--color-accent-blue);
+}
+
+.nav-icon {
+  font-size: 16px;
+}
+
+.metrics-container {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.metric-card {
+  background: rgba(23, 32, 54, 0.65);
+  border: 1px solid rgba(37, 99, 235, 0.15);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: left;
+}
+
+.metric-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+}
+
+.metric-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--color-accent-blue);
+}
+
+.filter-section {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.filter-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--color-text-secondary);
+}
+
+.filter-dropdown {
+  padding: 12px 14px;
+  background: rgba(23, 32, 54, 0.75);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: 10px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+}
+
+.filter-dropdown option {
+  background: var(--color-sidebar-bg);
+}
+
+.category-legend {
+  margin-top: auto;
+  padding-top: 22px;
+  border-top: 1px solid rgba(37, 99, 235, 0.12);
+}
+
+.legend-title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+}
+
+.legend-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text-secondary);
+  font-weight: 700;
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.08);
+}
+
+.legend-dot.clinic {
+  background: var(--color-clinic);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.35);
+}
+.legend-dot.library {
+  background: var(--color-library);
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.35);
+}
+.legend-dot.shelter {
+  background: var(--color-shelter);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.35);
+}
+.legend-dot.police {
+  background: var(--color-police);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.35);
+}
+.legend-dot.remote {
+  background: var(--color-remote);
+  box-shadow: 0 0 10px rgba(30, 58, 138, 0.35);
+}
+
+/* ===========================
+   MAP WORKSPACE
+   =========================== */
+.map-workspace {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--color-deep-dark);
+}
+
+/* CRITICAL MAP FIX: explicit dimensions */
+#map-frame {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Leaflet should fill its container */
+#map-frame .leaflet-container {
+  width: 100%;
+  height: 100%;
+}
+
+.leaflet-container {
+  background: var(--color-deep-dark) !important;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.leaflet-popup-content-wrapper {
+  background: rgba(23, 32, 54, 0.95);
+  border-radius: 12px;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.55);
+  padding: 0;
+}
+
+.leaflet-popup-content {
+  color: var(--color-text-primary);
+  margin: 0;
+  padding: 16px;
+  font-size: 13px;
+}
+
+.leaflet-popup-tip {
+  background: rgba(23, 32, 54, 0.95);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+}
+
+.leaflet-popup-close-button {
+  color: var(--color-text-secondary);
+  opacity: 0.75;
+}
+
+.leaflet-popup-close-button:hover {
+  color: var(--color-accent-blue);
+  opacity: 1;
+}
+
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+  background: rgba(23, 32, 54, 0.75) !important;
+  border: 1px solid rgba(37, 99, 235, 0.2) !important;
+  color: var(--color-text-primary) !important;
+  font-weight: 800;
+}
+
+/* ===========================
+   FLOATING ACTION BUTTONS OVERLAY
+   =========================== */
+.btn-action {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: calc(var(--z-floating));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  background: rgba(14, 20, 36, 0.78);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  border-radius: 12px;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(37, 99, 235, 0.65);
+}
+
+.action-btn:active {
+  transform: translateY(0);
+}
+
+.action-btn span {
+  font-size: 16px;
+}
+
+/* ===========================
+   CATEGORY PILLS (BOTTOM RIGHT)
+   =========================== */
+.category-pills {
+  position: absolute;
+  bottom: 18px;
+  right: 18px;
+  z-index: var(--z-floating);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pill {
+  padding: 10px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(14, 20, 36, 0.72);
+  backdrop-filter: blur(10px);
+  color: #fff;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.25);
+}
+
+.pill.clinic {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+.pill.library {
+  border-color: rgba(249, 115, 22, 0.35);
+}
+.pill.shelter {
+  border-color: rgba(34, 197, 94, 0.35);
+}
+.pill.police {
+  border-color: rgba(59, 130, 246, 0.35);
+}
+.pill.remote {
+  border-color: rgba(30, 58, 138, 0.35);
+}
+
+/* ===========================
+   POPUP CUSTOM (MATCH JS CLASSES)
+   =========================== */
+.service-popup {
+  min-width: 280px;
+}
+
+.popup-name {
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--color-accent-blue);
+  margin-bottom: 8px;
+}
+
+.popup-address,
+.popup-hours {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.popup-icon {
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+/* ===========================
+   RESPONSIVE
+   =========================== */
+@media (max-width: 900px) {
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+    max-height: 35vh;
+    border-right: none;
+    border-bottom: 1px solid #1e2942;
+  }
+
+  .btn-action {
+    flex-direction: row;
+    flex-wrap: wrap;
+    max-width: calc(100% - 36px);
+    right: 18px;
+  }
+}
+
