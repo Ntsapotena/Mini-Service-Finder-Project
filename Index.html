@@ -1,168 +1,174 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nearby Services Finder - MVP</title>
-    <!-- Leaflet.js CSS for Map Layout -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="Style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Free Service Finder</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="Style.css" />
 </head>
 <body>
-
-    <!-- Left Dashboard Sidebar Control Panel -->
-    <aside class="sidebar">
-        <div class="sidebar-brand">
-            NearbyServices <span>MVP</span>
-        </div>
-        
-        <ul class="nav-menu">
-            <li class="nav-item active">📍 Map View</li>
-            <li class="nav-item" onclick="alert('Admin Login / Dashboard integration coming in Phase 2!')">🔑 Admin Portal</li>
-        </ul>
-
-        <div class="stats-card">
-            <div>
-                <span id="visibleCount">0</span>
-                <p>Visible</p>
-            </div>
-            <div>
-                <span id="favoriteCount">0</span>
-                <p>Favorites</p>
-            </div>
-        </div>
-
-        <div class="filter-box">
-            <label for="serviceFilter">Filter Services</label>
-            <select id="serviceFilter">
-                <option value="all">🌐 Show All Services</option>
-                <option value="clinic">🏥 Clinics</option>
-                <option value="library">📚 Libraries</option>
-                <option value="shelter">🏠 Shelters</option>
-                <option value="police">🚓 Police Stations</option>
-                <option value="remote">💻 Work From Home</option>
-                <option value="favorites">⭐ Favorites</option>
-            </select>
-        </div>
-    </aside>
-
-    <!-- Main Live App Interface Area -->
-    <main class="main-content">
-        <!-- Whiteboard Feature #4: Search Input Row -->
-        <div class="top-controls-overlay">
-            <div class="search-box-wrapper">
-                <input type="text" id="mapSearch" placeholder="Search by service name or keyword...">
-            </div>
-            <div id="routeInfo" style="display:none; align-items:center; gap:8px; background:rgba(255,255,255,0.95); padding:8px 10px; border-radius:8px;">
-                <span id="routeSummary" style="font-weight:700; color:#0f172a"></span>
-                <button class="control-btn" id="clearRouteBtn" onclick="clearRoute()">Clear Route</button>
-            </div>
-            <button class="control-btn" id="toggleThemeBtn">🌙 Dark Mode</button>
-            <button class="suggest-action-btn" id="openModalBtn">+ Suggest Location</button>
-        </div>
-
-        <div class="map-action-row">
-            <button class="secondary-btn" onclick="locateUser()">📍 Find Me</button>
-            <button class="secondary-btn" onclick="pickRandomService()">🎲 Surprise Me</button>
-            <button class="secondary-btn" onclick="toggleClusters()">🧩 Toggle Clusters</button>
-            <button class="secondary-btn" onclick="toggleHeat()">🔥 Toggle Heatmap</button>
-            <button class="secondary-btn" onclick="startVoiceSearch()">🎤 Voice Search</button>
-            <button class="secondary-btn" onclick="toggleMiniMode()">🧾 Mini Mode</button>
-            <div class="tile-switcher">
-                <button class="tile-btn active" data-source="osm">OSM</button>
-                <button class="tile-btn" data-source="toner">Toner</button>
-            </div>
-            <button class="secondary-btn" onclick="exportData()">⬇️ Export JSON</button>
-            <button class="secondary-btn" onclick="document.getElementById('importFile').click()">⬆️ Import JSON</button>
-        </div>
-
-        <div class="service-list-panel" id="serviceListPanel">
-            <div class="service-list-header">
-                <div>
-                    <h4>Nearby services</h4>
-                    <p id="serviceListDescription">Tap a card to jump there.</p>
-                </div>
-                <button class="collapse-btn" id="toggleListBtn">Hide</button>
-            </div>
-            <div class="service-list-items" id="serviceListItems"></div>
-        </div>
-        <div class="legend-card" id="legendCard">
-            <h4>Service Types</h4>
-            <div class="legend-items">
-                <span class="legend-chip clinic">Clinic</span>
-                <span class="legend-chip library">Library</span>
-                <span class="legend-chip shelter">Shelter</span>
-                <span class="legend-chip police">Police</span>
-                <span class="legend-chip remote">Remote</span>
-            </div>
-        </div>
-        <div class="heat-legend-card" id="heatLegendCard" style="display:none;">
-            <h4>Heat Intensity</h4>
-            <div class="heat-gradient">
-                <span class="heat-label low">Low</span>
-                <span class="heat-label high">High</span>
-            </div>
-            <p style="font-size:10px; color:#64748b; margin-top:6px;">Enabled when toggle is on</p>
-        </div>
-
-        <!-- Whiteboard Feature #1: Interactive Map Canvas Container -->
-        <div id="map"></div>
-    </main>
-
-    <!-- Whiteboard Feature #10: Suggestion Overlay Form Modal -->
-    <div class="modal-backdrop" id="suggestionModal">
-        <div class="modal-card">
-            <h3>Suggest New Service</h3>
-            <form id="submissionForm">
-                <div class="form-group">
-                    <label>Service Category</label>
-                    <select id="fieldCategory" required>
-                        <option value="clinic">Clinic</option>
-                        <option value="library">Library</option>
-                        <option value="shelter">Shelter</option>
-                        <option value="police">Police Station</option>
-                        <option value="remote">Work From Home Hub</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Facility Name</label>
-                    <input type="text" id="fieldName" placeholder="e.g. Cape Town Central Clinic" required>
-                </div>
-                <div class="form-group">
-                    <label>Description / Core Details</label>
-                    <textarea id="fieldDesc" rows="2" placeholder="What core community support do they provide?" required></textarea>
-                </div>
-                <div style="display: flex; gap: 10px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label>Latitude</label>
-                        <input type="number" step="any" id="fieldLat" required>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label>Longitude</label>
-                        <input type="number" step="any" id="fieldLon" required>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Operating Hours & Contact</label>
-                    <input type="text" id="fieldHours" placeholder="e.g. 08:00 - 16:00 | 021 555 1234" required>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn-cancel" id="closeModalBtn">Cancel</button>
-                    <button type="submit" class="btn-submit">Submit Suggestion</button>
-                </div>
-            </form>
-        </div>
+  <header>
+    <div class="hero">
+      <div>
+        <h1>Free Service Finder</h1>
+        <p>Discover nearby services using Leaflet, OpenStreetMap, and Overpass API.</p>
+      </div>
     </div>
+  </header>
 
-    <!-- Leaflet Engine Source Code Script -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Marker cluster -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    <!-- Heatmap layer -->
-    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
-    <script src="Script.js"></script>
-    <input type="file" id="importFile" accept="application/json" style="display:none" />
+  <main id="app">
+    <section class="search-panel">
+      <div class="field-row">
+        <label for="location">Location</label>
+        <input id="location" type="text" placeholder="Enter city, address, or landmark" />
+        <button id="use-location" type="button">Use my location</button>
+      </div>
+
+      <div class="field-row">
+        <label for="category">Service type</label>
+        <select id="category">
+          <option value="pharmacy">Pharmacy</option>
+          <option value="hospital">Hospital</option>
+          <option value="restaurant">Restaurant</option>
+          <option value="cafe">Cafe</option>
+          <option value="bank">Bank</option>
+          <option value="fuel">Fuel station</option>
+          <option value="supermarket">Supermarket</option>
+          <option value="post_office">Post office</option>
+          <option value="library">Library</option>
+          <option value="police">Police</option>
+          <option value="all">Any nearby amenity</option>
+        </select>
+      </div>
+
+      <div class="field-row">
+        <label for="radius">Radius: <strong><span id="radius-value">2000</span> m</strong></label>
+        <input id="radius" type="range" min="500" max="5000" value="2000" step="100" />
+      </div>
+
+      <div class="actions">
+        <button id="search-btn" type="button">Search services</button>
+        <button id="reset-btn" type="button">Reset map</button>
+      </div>
+
+      <div id="status" class="status">Enter a location or use your current position to begin.</div>
+    </section>
+
+    <section class="map-layout">
+      <div id="map"></div>
+      <aside class="result-panel">
+        <h2>Results</h2>
+        <p id="result-count">No results yet.</p>
+        <ul id="result-list">
+          <!-- Vue will manage results rendering via Script.js updates -->
+        </ul>
+      </aside>
+    </section>
+  </main>
+
+
+  <!-- Authentication Modal -->
+  <div id="auth-modal" class="modal hidden">
+    <div class="modal-content">
+      <button class="modal-close" id="auth-close">✕</button>
+      <div class="auth-container">
+        <div id="login-form" class="auth-form">
+          <h2>Login</h2>
+          <input id="login-email" type="email" placeholder="Email" required />
+          <input id="login-password" type="password" placeholder="Password" required />
+          <button id="login-btn" type="button">Login</button>
+          <p>Don't have an account? <button id="to-signup" type="button" class="link-btn">Sign up</button></p>
+        </div>
+        <div id="signup-form" class="auth-form hidden">
+          <h2>Sign Up</h2>
+          <input id="signup-name" type="text" placeholder="Full Name" required />
+          <input id="signup-email" type="email" placeholder="Email" required />
+          <input id="signup-password" type="password" placeholder="Password (min 6 chars)" required />
+          <button id="signup-btn" type="button">Create Account</button>
+          <p>Already have an account? <button id="to-login" type="button" class="link-btn">Login</button></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Suggestion Modal -->
+  <div id="suggestion-modal" class="modal hidden">
+    <div class="modal-content modal-large">
+      <button class="modal-close" id="suggestion-close">✕</button>
+      <h2>Suggest a New Service</h2>
+      <form id="suggestion-form">
+        <div class="form-group">
+          <label for="suggest-name">Service Name</label>
+          <input id="suggest-name" type="text" placeholder="e.g., John's Pharmacy" required />
+        </div>
+        <div class="form-group">
+          <label for="suggest-type">Service Type</label>
+          <select id="suggest-type" required>
+            <option value="">Select a type...</option>
+            <option value="pharmacy">Pharmacy</option>
+            <option value="hospital">Hospital</option>
+            <option value="restaurant">Restaurant</option>
+            <option value="cafe">Cafe</option>
+            <option value="bank">Bank</option>
+            <option value="fuel">Fuel station</option>
+            <option value="supermarket">Supermarket</option>
+            <option value="post_office">Post office</option>
+            <option value="library">Library</option>
+            <option value="police">Police</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="suggest-address">Address</label>
+          <input id="suggest-address" type="text" placeholder="Full address" required />
+        </div>
+        <div class="form-group">
+          <label for="suggest-phone">Phone Number</label>
+          <input id="suggest-phone" type="tel" placeholder="Optional" />
+        </div>
+        <div class="form-group">
+          <label for="suggest-hours">Opening Hours</label>
+          <input id="suggest-hours" type="text" placeholder="e.g., 9 AM - 5 PM, Mon-Fri" />
+        </div>
+        <div class="form-group">
+          <label for="suggest-description">Description</label>
+          <textarea id="suggest-description" placeholder="Any additional details..." rows="3"></textarea>
+        </div>
+        <button id="suggest-btn" type="submit">Submit Suggestion</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Admin Panel -->
+  <div id="admin-panel" class="admin-panel hidden">
+    <div class="admin-header">
+      <h2>Admin Panel - Service Suggestions</h2>
+      <button id="admin-close" type="button">Close</button>
+    </div>
+    <div id="admin-content" class="admin-content">
+      <div id="admin-suggestions" class="suggestions-list">
+        <!-- Suggestions will be loaded here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- User Menu -->
+  <div id="user-menu" class="user-menu hidden">
+    <button id="suggest-service-btn" type="button">Suggest a Service</button>
+    <button id="admin-btn" type="button" class="hidden">Admin Panel</button>
+    <button id="logout-btn" type="button">Logout</button>
+  </div>
+
+  <!-- Floating User Button -->
+  <button id="user-btn" class="user-btn" title="User menu">👤</button>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="VueApp.js"></script>
+  <script src="Script.js"></script>
+
+  <script src="Auth.js"></script>
 </body>
 </html>
+

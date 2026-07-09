@@ -1,0 +1,11 @@
+- [x] Inspect existing repo files (index.html, Script.js, Auth.js)
+- [x] Add Vue 3 runtime to index.html
+- [x] Create VueApp.js with reactive state: services, searchQuery, selectedCategory
+- [x] Implement computed property filteredServices
+- [x] Mount Vue app onto <main id="app">
+- [x] Ensure DOM inputs (location + category) update Vue state
+- [x] Refactor Script.js: Overpass results populate Vue services
+- [x] Render the results list from Vue computed filteredServices
+- [x] Keep Leaflet markers rendered for fetched services; open marker popup on list click
+- [x] Wire reactive updates via filtered-services-updated custom event
+

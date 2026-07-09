@@ -1,477 +1,366 @@
-// Baseline database mimicking your whiteboard items (Clinics, Libraries, Shelters, Police)
-const defaultServices = [
-    { id: 1, name: "Cape Town Central Clinic", type: "clinic", lat: -33.9249, lon: 18.4241, desc: "Primary health consultations and family health services.", hours: "08:00 - 16:00" },
-    { id: 2, name: "Central Library", type: "library", lat: -33.9215, lon: 18.4210, desc: "Public book tracking lanes, student workspace desks, and free high-speed WiFi setup zones.", hours: "09:00 - 17:00" },
-    { id: 3, name: "Safe Haven Crisis Shelter", type: "shelter", lat: -33.9321, lon: 18.4025, desc: "Emergency short-term shelter, overnight intake, and warm food distribution lines.", hours: "24/7 Service" },
-    { id: 4, name: "Central Police Station", type: "police", lat: -33.9220, lon: 18.4280, desc: "Community policing, emergency safety assistance response, and public certification handling.", hours: "24/7 Operations" },
-    { id: 5, name: "City Remote Access Hub", type: "remote", lat: -33.9190, lon: 18.4255, desc: "Quiet shared workspace with reliable internet for job applications, online meetings, and remote learning.", hours: "07:00 - 21:00" },
-    { id: 6, name: "Harbor Digital Lounge", type: "remote", lat: -33.9350, lon: 18.4380, desc: "Free fast Wi-Fi, printing stations, and study-friendly rooms built for home office and interview prep.", hours: "08:00 - 20:00" }
-];
+const locationInput = document.getElementById('location');
+const useLocationBtn = document.getElementById('use-location');
+const categorySelect = document.getElementById('category');
+const radiusInput = document.getElementById('radius');
+const radiusValue = document.getElementById('radius-value');
+const searchBtn = document.getElementById('search-btn');
+const resetBtn = document.getElementById('reset-btn');
+const statusEl = document.getElementById('status');
+const resultList = document.getElementById('result-list');
+const resultCount = document.getElementById('result-count');
 
-let servicesDatabase = [];
-let activeMarkers = [];
-let favorites = [];
-let userLocation = null;
-const favoriteStorageKey = 'board_mvp_favorites';
-const serviceTypeMeta = {
-    clinic: { label: 'Clinic', marker: 'clinic', tag: 'tag-clinic' },
-    library: { label: 'Library', marker: 'library', tag: 'tag-library' },
-    shelter: { label: 'Shelter', marker: 'shelter', tag: 'tag-shelter' },
-    police: { label: 'Police', marker: 'police', tag: 'tag-police' },
-    remote: { label: 'Work From Home', marker: 'remote', tag: 'tag-remote' }
-};
+let currentCenter = null;
+let markersLayer = L.layerGroup();
 
-// Initialize Local Mock DB Data Storage (Stands in for Firebase in our MVP Mini Build)
-function loadServicesData() {
-    const cached = localStorage.getItem('board_mvp_services');
-    if (cached) {
-        servicesDatabase = JSON.parse(cached);
-    } else {
-        servicesDatabase = [...defaultServices];
-        localStorage.setItem('board_mvp_services', JSON.stringify(servicesDatabase));
+const map = L.map('map', {
+  zoomControl: true,
+}).setView([20, 0], 2);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+}).addTo(map);
+
+markersLayer.addTo(map);
+updateRadiusValue();
+
+radiusInput.addEventListener('input', updateRadiusValue);
+searchBtn.addEventListener('click', performSearch);
+resetBtn.addEventListener('click', resetMap);
+useLocationBtn.addEventListener('click', useCurrentLocation);
+
+function updateRadiusValue() {
+  radiusValue.textContent = radiusInput.value;
+}
+
+function setStatus(message, isError = false) {
+  statusEl.textContent = message;
+  statusEl.className = isError ? 'status error' : 'status';
+}
+
+function clearResults() {
+  resultList.innerHTML = '';
+  markersLayer.clearLayers();
+}
+
+function resetMap() {
+  map.setView([20, 0], 2);
+  currentCenter = null;
+  clearResults();
+  resultCount.textContent = 'No results yet.';
+  setStatus('Enter a location or use your current position to begin.');
+}
+
+function useCurrentLocation() {
+  if (!navigator.geolocation) {
+    setStatus('Geolocation is not supported in this browser.', true);
+    return;
+  }
+
+  setStatus('Locating your position…');
+
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      const { latitude, longitude } = position.coords;
+      currentCenter = { lat: latitude, lon: longitude };
+      map.setView([latitude, longitude], 14);
+      addCenterMarker(latitude, longitude, 'Your location');
+      setStatus('Location found. Search for services nearby.');
+    },
+    () => setStatus('Unable to retrieve your location.', true),
+    { enableHighAccuracy: true, timeout: 15000 }
+  );
+}
+
+async function geocode(query) {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+  const response = await fetch(url, {
+    headers: {
+      'Accept-Language': 'en',
+      'User-Agent': 'free-service-finder/1.0',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Geocoding service error');
+  }
+
+  const results = await response.json();
+  if (!results.length) {
+    throw new Error('Address not found');
+  }
+
+  return {
+    lat: parseFloat(results[0].lat),
+    lon: parseFloat(results[0].lon),
+    label: results[0].display_name,
+  };
+}
+
+async function performSearch() {
+  const locationText = locationInput.value.trim();
+  const radius = parseInt(radiusInput.value, 10);
+  const category = categorySelect.value;
+
+  try {
+    if (!currentCenter) {
+      if (!locationText) {
+        setStatus('Please enter a location or use current location first.', true);
+        return;
+      }
+
+      setStatus('Geocoding location…');
+      currentCenter = await geocode(locationText);
+      map.setView([currentCenter.lat, currentCenter.lon], 14);
+      addCenterMarker(currentCenter.lat, currentCenter.lon, currentCenter.label);
     }
+
+    setStatus('Searching for nearby services…');
+    const places = await searchNearby(currentCenter.lat, currentCenter.lon, radius, category);
+    renderPlaces(places);
+  } catch (error) {
+    setStatus(error.message || 'Search failed. Try again.', true);
+  }
 }
 
-function loadFavorites() {
-    const cached = localStorage.getItem(favoriteStorageKey);
-    if (cached) {
-        favorites = JSON.parse(cached);
-    } else {
-        favorites = [];
-    }
+function addCenterMarker(lat, lon, label) {
+  const marker = L.circleMarker([lat, lon], {
+    radius: 8,
+    color: '#1d4ed8',
+    fillColor: '#93c5fd',
+    fillOpacity: 0.9,
+  }).addTo(markersLayer);
+
+  marker.bindPopup(label).openPopup();
 }
 
-function saveFavorites() {
-    localStorage.setItem(favoriteStorageKey, JSON.stringify(favorites));
+async function searchNearby(lat, lon, radius, category) {
+  const filter = category === 'all' ? '["amenity"]' : `["amenity"="${category}"]`;
+  const query = `
+[out:json][timeout:20];
+(
+  node${filter}(around:${radius},${lat},${lon});
+  way${filter}(around:${radius},${lat},${lon});
+  relation${filter}(around:${radius},${lat},${lon});
+);
+out center;`;
+
+  const response = await fetch('https://overpass-api.de/api/interpreter', {
+    method: 'POST',
+    body: query,
+    headers: {
+      'Content-Type': 'text/plain;charset=UTF-8',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Overpass API returned an error. Please try again later.');
+  }
+
+  const data = await response.json();
+  return data.elements || [];
 }
 
-function isFavorite(serviceId) {
-    return favorites.includes(serviceId);
+function renderPlaces(elements) {
+  // Instead of immediately rendering the list, store results in Vue state.
+  // Vue will expose filteredServices (computed) based on searchQuery + selectedCategory.
+  const app = window.__serviceFinderApp;
+
+  // Ensure list re-renders on reactive filter changes.
+  if (!window.__serviceFinderFilterHooked) {
+    window.__serviceFinderFilterHooked = true;
+    window.addEventListener('filtered-services-updated', () => {
+      const currentApp = window.__serviceFinderApp;
+      if (currentApp) {
+        renderFilteredList(currentApp.filteredServices);
+      }
+    });
+  }
+
+
+  // Keep markers rendered for all returned services (phase-1 behavior)
+  // but update result list based on Vue computed filtering.
+  clearResults();
+
+  if (!elements || !elements.length) {
+    resultCount.textContent = 'No services found in this area.';
+    setStatus('Try increasing the radius or switching service type.');
+    if (app) app.setServices([]);
+    return;
+  }
+
+  const bounds = [];
+
+  elements.forEach((element) => {
+    const coords = element.type === 'node'
+      ? [element.lat, element.lon]
+      : [element.center?.lat, element.center?.lon];
+
+    if (!coords[0] || !coords[1]) return;
+
+    bounds.push(coords);
+
+    const name = element.tags?.name || 'Unnamed place';
+    const amenity = element.tags?.amenity || 'Service';
+    const address =
+      element.tags?.['addr:street'] || element.tags?.['addr:housenumber'] || '';
+    const phone = element.tags?.phone || '';
+    const hours = element.tags?.opening_hours || '';
+
+    const markerColor = getMarkerColor(amenity);
+    const marker = L.circleMarker(coords, {
+      radius: 7,
+      fillColor: markerColor,
+      color: '#ffffff',
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.85,
+    }).addTo(markersLayer);
+
+    const distance = estimateDistance(coords[0], coords[1], currentCenter.lat, currentCenter.lon);
+    let popupContent = `<strong>${name}</strong><br><em>${amenity.replace('_', ' ')}</em>`;
+    if (address) popupContent += `<br>📍 ${address}`;
+    if (phone) popupContent += `<br>☎ ${phone}`;
+    if (distance) popupContent += `<br>📏 ${distance}m away`;
+
+    marker.bindPopup(popupContent);
+
+    // Attach minimal metadata to marker for list actions.
+    marker.__serviceData = {
+      element,
+      coords,
+      name,
+      amenity,
+      address,
+      phone,
+      hours,
+      distance,
+      marker,
+    };
+  });
+
+  // Fit bounds based on all returned elements.
+  if (bounds.length) {
+    map.fitBounds(bounds, { padding: [70, 70] });
+  }
+
+  // Normalize services so Vue can filter using amenityKey.
+  const normalized = elements.map((el) => {
+    const type = el.type;
+    const coords = type === 'node'
+      ? { lat: el.lat, lon: el.lon }
+      : { lat: el.center?.lat, lon: el.center?.lon };
+
+    return {
+      type,
+      lat: coords.lat,
+      lon: coords.lon,
+      name: el.tags?.name || 'Unnamed place',
+      amenityKey: el.tags?.amenity || '',
+      amenity: el.tags?.amenity || 'Service',
+      address: el.tags?.['addr:street'] || el.tags?.['addr:housenumber'] || '',
+      phone: el.tags?.phone || '',
+      hours: el.tags?.opening_hours || '',
+      element: el,
+    };
+  });
+
+  if (app) {
+    app.setServices(normalized);
+
+    // Render list immediately for the initial computed value.
+    renderFilteredList(app.filteredServices);
+  }
+
+  setStatus('Search complete. Click a result to center it on the map.');
 }
 
-function toggleFavorite(serviceId) {
-    const index = favorites.indexOf(serviceId);
-    if (index >= 0) {
-        favorites.splice(index, 1);
-    } else {
-        favorites.push(serviceId);
-    }
-    saveFavorites();
-    renderMapPoints();
-}
+function renderFilteredList(filtered) {
+  clearListOnly();
 
-// Initialize Leaflet Map Engine centered on Cape Town
-const map = L.map('map', { zoomControl: false }).setView([-33.9249, 18.4250], 13);
-L.control.zoom({ position: 'bottomright' }).addTo(map);
+  const items = filtered || [];
+  resultCount.textContent = items.length
+    ? `${items.length} result${items.length === 1 ? '' : 's'} found.`
+    : 'No services found in this area.';
 
-const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors'
-});
+  items.forEach((s) => {
+    const coords = [s.lat, s.lon];
+    if (!coords[0] || !coords[1]) return;
 
-const tonerLayer = L.tileLayer('https://stamen-tiles.a.ssl.fastly.net/toner/{z}/{x}/{y}.png', {
-    attribution: 'Map tiles by Stamen Design, CC BY 3.0 — Map data © OpenStreetMap contributors'
-});
+    const name = s.name || 'Unnamed place';
+    const amenity = s.amenity || 'Service';
+    const address = s.address || '';
+    const phone = s.phone || '';
+    const hours = s.hours || '';
 
-let currentTileLayer = osmLayer;
-currentTileLayer.addTo(map);
-// Clustering + heatmap support
-const clusterGroup = L.markerClusterGroup({
-    chunkedLoading: true,
-    spiderfyOnMaxZoom: true,
-    showCoverageOnHover: false,
-    animate: true,
-    disableClusteringAtZoom: 18,
-    maxClusterRadius: 80,
-    iconCreateFunction: function(cluster) {
-        const count = cluster.getChildCount();
-        const c = ' marker-cluster-';
-        if (count < 10) return L.divIcon({ html: '<div><span>' + count + '</span></div>', className: 'marker-cluster' + c + 'small', iconSize: L.point(40, 40) });
-        if (count < 100) return L.divIcon({ html: '<div><span>' + count + '</span></div>', className: 'marker-cluster' + c + 'medium', iconSize: L.point(50, 50) });
-        return L.divIcon({ html: '<div><span>' + count + '</span></div>', className: 'marker-cluster' + c + 'large', iconSize: L.point(60, 60) });
-    }
-});
-let clusterEnabled = true;
-let heatLayer = null;
-let heatEnabled = false;
-let currentRouteLayer = null;
-let recognition = null;
-let recognitionActive = false;
+    const distance = estimateDistance(coords[0], coords[1], currentCenter.lat, currentCenter.lon);
 
-function switchTileSource(source) {
-    map.removeLayer(currentTileLayer);
-    currentTileLayer = source === 'toner' ? tonerLayer : osmLayer;
-    currentTileLayer.addTo(map);
-}
+    const item = document.createElement('li');
+    item.className = 'result-item';
+    item.innerHTML = `
+      <div class="result-header">
+        <strong>${name}</strong>
+        <span class="result-distance">${distance}m</span>
+      </div>
+      <div class="result-type">${amenity.replace('_', ' ')}</div>
+      ${address ? `<div class="result-address">📍 ${address}</div>` : ''}
+      ${phone ? `<div class="result-phone">☎ ${phone}</div>` : ''}
+      ${hours ? `<div class="result-hours">🕐 ${hours}</div>` : ''}
+    `;
 
-// Auto-populate coordinates into form when a user clicks anywhere on the map
-map.on('click', function(e) {
-    document.getElementById('fieldLat').value = e.latlng.lat.toFixed(6);
-    document.getElementById('fieldLon').value = e.latlng.lng.toFixed(6);
-    toggleModalVisibility(true);
-});
+    item.addEventListener('click', () => {
+      map.setView(coords, 16);
 
-// Render Markers with Filters and Search Keywords Applied
-function renderMapPoints() {
-    activeMarkers.forEach(m => map.removeLayer(m));
-    activeMarkers = [];
-    // clear cluster group when present
-    if (clusterGroup) clusterGroup.clearLayers();
-
-    const selectedCategory = document.getElementById('serviceFilter').value;
-    const searchString = document.getElementById('mapSearch').value.toLowerCase();
-    const visibleServices = [];
-
-    servicesDatabase.forEach(item => {
-        const favoriteMatch = selectedCategory === 'favorites' ? favorites.includes(item.id) : true;
-        const categoryMatch = selectedCategory === 'all' || item.type === selectedCategory;
-        const searchMatch = item.name.toLowerCase().includes(searchString) || item.desc.toLowerCase().includes(searchString);
-
-        if (favoriteMatch && categoryMatch && searchMatch) {
-            visibleServices.push(item);
-            const meta = serviceTypeMeta[item.type] || serviceTypeMeta.remote;
-            const icon = L.divIcon({
-                className: `custom-marker ${meta.marker}`,
-                html: `<div class="marker-core"></div>`,
-                iconSize: [28, 28],
-                iconAnchor: [14, 28]
-            });
-            const marker = L.marker([item.lat, item.lon], { icon });
-            if (clusterEnabled) {
-                clusterGroup.addLayer(marker);
-            } else {
-                marker.addTo(map);
-            }
-            const favoriteText = isFavorite(item.id) ? '★ Remove' : '☆ Favorite';
-            const contents = `
-                <div class="map-popup">
-                    <span class="service-tag ${meta.tag}">${meta.label}</span>
-                    <h3>${item.name}</h3>
-                    <p>${item.desc}</p>
-                    <p style="font-size:11px; font-weight:bold; color:#1e3a8a;">🕒 ${item.hours}</p>
-                    <a class="directions-btn" href="https://www.google.com/maps/dir/?api=1&destination=${item.lat},${item.lon}" target="_blank">Get Directions</a>
-                    <button class="popup-route-btn" onclick="routeToService(${item.lat}, ${item.lon})">🗺️ Route</button>
-                    <button class="popup-fav-btn" onclick="toggleFavorite(${item.id})">${favoriteText}</button>
-                </div>
-            `;
-            marker.bindPopup(contents);
-            activeMarkers.push(marker);
+      // Try to find matching marker and open popup.
+      markersLayer.eachLayer((layer) => {
+        if (layer?.__serviceData?.coords) {
+          const cd = layer.__serviceData.coords;
+          if (cd[0] === coords[0] && cd[1] === coords[1]) {
+            layer.openPopup?.();
+          }
         }
+      });
     });
 
-    // If clustering enabled, ensure group is on the map
-    if (clusterEnabled) {
-        if (!map.hasLayer(clusterGroup)) map.addLayer(clusterGroup);
-    } else {
-        if (map.hasLayer(clusterGroup)) map.removeLayer(clusterGroup);
-    }
-
-    // Heatmap update: gather visible points
-    if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
-    if (heatEnabled && visibleServices.length) {
-        const heatPoints = visibleServices.map(s => [s.lat, s.lon, 0.6]);
-        heatLayer = L.heatLayer(heatPoints, { radius: 25, blur: 18, maxZoom: 17 }).addTo(map);
-    }
-
-    updateSummary(visibleServices.length);
-    renderServiceList(visibleServices);
-    setTimeout(() => map.invalidateSize(), 300);
+    resultList.appendChild(item);
+  });
 }
 
-function routeToService(lat, lon) {
-    const originLon = userLocation ? userLocation.lon : map.getCenter().lng;
-    const originLat = userLocation ? userLocation.lat : map.getCenter().lat;
-    const url = `https://router.project-osrm.org/route/v1/driving/${originLon},${originLat};${lon},${lat}?overview=full&geometries=geojson`;
-    fetch(url).then(r => r.json()).then(data => {
-        if (!data.routes || !data.routes.length) return alert('No route found.');
-        const routeGeo = data.routes[0].geometry;
-        const dist = data.routes[0].distance;
-        const dur = data.routes[0].duration;
-        if (currentRouteLayer) map.removeLayer(currentRouteLayer);
-        currentRouteLayer = L.geoJSON(routeGeo, { style: { color: '#2563eb', weight: 5, opacity: 0.9 } }).addTo(map);
-        const bounds = currentRouteLayer.getBounds();
-        map.fitBounds(bounds.pad(0.2));
-        // show summary
-        const km = (dist / 1000).toFixed(1);
-        const mins = Math.round(dur / 60);
-        const summaryEl = document.getElementById('routeSummary');
-        if (summaryEl) { summaryEl.textContent = `${km} km · ${mins} min`; document.getElementById('routeInfo').style.display = 'flex'; }
-    }).catch(err => alert('Routing failed: ' + err.message));
+function clearListOnly() {
+  // Keep existing markers; only update the list.
+  resultList.innerHTML = '';
 }
 
-function clearRoute() {
-    if (currentRouteLayer) { map.removeLayer(currentRouteLayer); currentRouteLayer = null; }
-    const ri = document.getElementById('routeInfo');
-    if (ri) ri.style.display = 'none';
+
+function estimateDistance(lat1, lon1, lat2, lon2) {
+  const toRad = (value) => (value * Math.PI) / 180;
+  const R = 6371000;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c);
 }
 
-function toggleMiniMode() {
-    document.body.classList.toggle('mini');
-    setTimeout(() => map.invalidateSize(), 300);
+function getMarkerColor(amenity) {
+  const colors = {
+    pharmacy: '#ef4444',
+    hospital: '#dc2626',
+    restaurant: '#f97316',
+    cafe: '#eab308',
+    bank: '#3b82f6',
+    fuel: '#6b21a8',
+    supermarket: '#10b981',
+    post_office: '#8b5cf6',
+    library: '#06b6d4',
+    police: '#0ea5e9',
+  };
+  return colors[amenity] || '#6366f1';
 }
 
-function startVoiceSearch() {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-        alert('Speech recognition not available in this browser.');
-        return;
-    }
-    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!recognition) {
-        recognition = new SpeechRec();
-        recognition.lang = 'en-US';
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
-        recognition.onresult = (e) => {
-            const text = e.results[0][0].transcript;
-            document.getElementById('mapSearch').value = text;
-            renderMapPoints();
-        };
-        recognition.onend = () => { recognitionActive = false; document.querySelectorAll('.secondary-btn').forEach(b => b.disabled = false); };
-    }
-    if (!recognitionActive) {
-        recognition.start(); recognitionActive = true;
-        document.querySelectorAll('.secondary-btn').forEach(b => b.disabled = true);
-    } else {
-        recognition.stop(); recognitionActive = false;
-    }
-}
-
-function toggleClusters() {
-    clusterEnabled = !clusterEnabled;
-    localStorage.setItem('nearbyservices_clusters', clusterEnabled ? '1' : '0');
-    renderMapPoints();
-    updateClusterButton();
-    document.querySelectorAll('.tile-btn').forEach(b => b.blur());
-}
-
-function toggleHeat() {
-    heatEnabled = !heatEnabled;
-    localStorage.setItem('nearbyservices_heat', heatEnabled ? '1' : '0');
-    renderMapPoints();
-    updateHeatButton();
-}
-
-function updateClusterButton() {
-    const btn = document.querySelector('[onclick="toggleClusters()"]');
-    if (btn) btn.textContent = (clusterEnabled ? '🧩 Clusters: On' : '🧩 Toggle Clusters');
-}
-
-function updateHeatButton() {
-    const btn = document.querySelector('[onclick="toggleHeat()"]');
-    if (btn) btn.textContent = (heatEnabled ? '🔥 Heat: On' : '🔥 Toggle Heatmap');
-    const heatLegend = document.getElementById('heatLegendCard');
-    if (heatLegend) heatLegend.style.display = heatEnabled ? 'block' : 'none';
-}
-
-function exportData() {
-    const data = JSON.stringify(servicesDatabase, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'services-export.json';
-    a.click();
-    URL.revokeObjectURL(url);
-}
-
-function importDataFile(file) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const parsed = JSON.parse(e.target.result);
-            if (Array.isArray(parsed)) {
-                // merge, avoid ID clashes by generating new ids if necessary
-                parsed.forEach(p => {
-                    if (!p.id) p.id = Date.now() + Math.floor(Math.random() * 9999);
-                    servicesDatabase.push(p);
-                });
-                localStorage.setItem('board_mvp_services', JSON.stringify(servicesDatabase));
-                renderMapPoints();
-                alert('Imported ' + parsed.length + ' services.');
-            } else {
-                alert('Invalid file format: expected an array of services');
-            }
-        } catch (err) { alert('Failed to import: ' + err.message); }
-    };
-    reader.readAsText(file);
-}
-
-function updateSummary(visibleCount) {
-    document.getElementById('visibleCount').textContent = visibleCount;
-    document.getElementById('favoriteCount').textContent = favorites.length;
-}
-
-function renderServiceList(serviceItems) {
-    const container = document.getElementById('serviceListItems');
-    container.innerHTML = '';
-
-    if (serviceItems.length === 0) {
-        container.innerHTML = '<div class="service-card"><strong>No services found</strong><span>Try changing the filter or search term.</span></div>';
-        return;
-    }
-
-    serviceItems.forEach(item => {
-        const meta = serviceTypeMeta[item.type] || serviceTypeMeta.remote;
-        const distanceLabel = userLocation ? ` · ${getDistance(item).toFixed(1)} km away` : '';
-        const card = document.createElement('div');
-        card.className = 'service-card';
-        card.innerHTML = `
-            <strong>${item.name}</strong>
-            <span class="service-tag ${meta.tag}">${meta.label}</span>
-            <span>${item.desc}${distanceLabel}</span>
-        `;
-        card.addEventListener('click', () => {
-            map.flyTo([item.lat, item.lon], 14);
-            const marker = activeMarkers.find(m => {
-                const latLng = m.getLatLng();
-                return latLng.lat === item.lat && latLng.lng === item.lon;
-            });
-            if (marker) marker.openPopup();
-        });
-        container.appendChild(card);
-    });
-}
-
-// Modal Interactivity Toggle Functions
-function toggleModalVisibility(show) {
-    document.getElementById('suggestionModal').style.display = show ? 'flex' : 'none';
-}
-
-// Save suggested pins inside the live local dataset array runtime
-function processNewSuggestion(e) {
-    e.preventDefault();
-
-    const entry = {
-        id: Date.now(),
-        name: document.getElementById('fieldName').value,
-        type: document.getElementById('fieldCategory').value,
-        lat: parseFloat(document.getElementById('fieldLat').value),
-        lon: parseFloat(document.getElementById('fieldLon').value),
-        desc: document.getElementById('fieldDesc').value,
-        hours: document.getElementById('fieldHours').value
-    };
-
-    servicesDatabase.push(entry);
-    localStorage.setItem('board_mvp_services', JSON.stringify(servicesDatabase));
-
-    renderMapPoints();
-    toggleModalVisibility(false);
-    document.getElementById('submissionForm').reset();
-    
-    map.flyTo([entry.lat, entry.lon], 14);
-}
-
-function loadTheme() {
-    const saved = localStorage.getItem('nearbyservices_theme');
-    if (saved === 'dark') {
-        document.body.classList.add('dark');
-        document.getElementById('toggleThemeBtn').textContent = '☀️ Light Mode';
-    }
-}
-
-function getDistance(service) {
-    const R = 6371;
-    const toRad = deg => deg * Math.PI / 180;
-    const dLat = toRad(service.lat - userLocation.lat);
-    const dLon = toRad(service.lon - userLocation.lon);
-    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(userLocation.lat)) * Math.cos(toRad(service.lat)) * Math.sin(dLon / 2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-}
-
-function toggleTheme() {
-    const button = document.getElementById('toggleThemeBtn');
-    document.body.classList.toggle('dark');
-    const isDark = document.body.classList.contains('dark');
-    localStorage.setItem('nearbyservices_theme', isDark ? 'dark' : 'light');
-    button.textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
-}
-
-function toggleServiceList() {
-    const panel = document.getElementById('serviceListPanel');
-    const btn = document.getElementById('toggleListBtn');
-    const hidden = panel.classList.toggle('collapsed');
-    btn.textContent = hidden ? 'Show' : 'Hide';
-    if (!hidden) setTimeout(() => map.invalidateSize(), 300);
-}
-
-function locateUser() {
-    if (!navigator.geolocation) {
-        alert('Geolocation is not available in your browser.');
-        return;
-    }
-    navigator.geolocation.getCurrentPosition(position => {
-        const { latitude, longitude } = position.coords;
-        userLocation = { lat: latitude, lon: longitude };
-        map.flyTo([latitude, longitude], 14);
-        renderMapPoints();
-    }, () => {
-        alert('Unable to retrieve your location. Please allow location access.');
-    });
-}
-
-function pickRandomService() {
-    const selectedCategory = document.getElementById('serviceFilter').value;
-    const searchString = document.getElementById('mapSearch').value.toLowerCase();
-    const matching = servicesDatabase.filter(item => {
-        const categoryMatch = selectedCategory === 'all' || item.type === selectedCategory;
-        const searchMatch = item.name.toLowerCase().includes(searchString) || item.desc.toLowerCase().includes(searchString);
-        return categoryMatch && searchMatch;
-    });
-
-    if (!matching.length) {
-        alert('No matching services available for a random pick.');
-        return;
-    }
-
-    const randomItem = matching[Math.floor(Math.random() * matching.length)];
-    map.flyTo([randomItem.lat, randomItem.lon], 14);
-    setTimeout(() => {
-        const marker = activeMarkers.find(m => {
-            const latLng = m.getLatLng();
-            return latLng.lat === randomItem.lat && latLng.lng === randomItem.lon;
-        });
-        if (marker) marker.openPopup();
-    }, 600);
-}
-
-// Wire Event Handlers safely to components
-document.getElementById('openModalBtn').addEventListener('click', () => toggleModalVisibility(true));
-document.getElementById('closeModalBtn').addEventListener('click', () => toggleModalVisibility(false));
-document.getElementById('submissionForm').addEventListener('submit', processNewSuggestion);
-document.getElementById('serviceFilter').addEventListener('change', renderMapPoints);
-document.getElementById('mapSearch').addEventListener('input', renderMapPoints);
-document.getElementById('toggleThemeBtn').addEventListener('click', toggleTheme);
-document.getElementById('toggleListBtn').addEventListener('click', toggleServiceList);
-document.querySelectorAll('.tile-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        document.querySelectorAll('.tile-btn').forEach(b => b.classList.remove('active'));
-        this.classList.add('active');
-        switchTileSource(this.dataset.source);
-    });
-});
-
-// Startup Routine Trigger
-loadServicesData();
-loadFavorites();
-loadTheme();
-// load saved cluster/heat prefs
-const savedClusters = localStorage.getItem('nearbyservices_clusters');
-if (savedClusters !== null) clusterEnabled = savedClusters === '1';
-const savedHeat = localStorage.getItem('nearbyservices_heat');
-if (savedHeat !== null) heatEnabled = savedHeat === '1';
-renderMapPoints();
-setTimeout(() => map.invalidateSize(), 300);
-// update UI buttons
-setTimeout(() => { updateClusterButton(); updateHeatButton(); }, 400);
-// wire clearRouteBtn if present
-const clearRouteBtn = document.getElementById('clearRouteBtn');
-if (clearRouteBtn) { clearRouteBtn.addEventListener('click', clearRoute); }
-// Import file input listener
-const importInput = document.getElementById('importFile');
-if (importInput) {
-    importInput.addEventListener('change', (e) => {
-        const f = e.target.files && e.target.files[0];
-        if (f) importDataFile(f);
-        importInput.value = '';
-    });
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {
+    console.warn('Service worker registration failed.');
+  });
 }
